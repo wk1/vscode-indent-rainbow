@@ -57,9 +57,11 @@ export function activate(context: vscode.ExtensionContext) {
       });
     }
 
+    const updatedColor = color.replace(/[\d\.]+\)$/g, "1.0)");
+
     activeScopeLightDecorationTypes[index] = vscode.window.createTextEditorDecorationType({
       borderStyle: "solid",
-        borderColor: color,
+        borderColor: updatedColor,
         borderWidth: `0 0 0 ${lightIndicatorStyleLineWidth * 3}px`
       });
   });
