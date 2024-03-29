@@ -33,6 +33,7 @@ export function activate(context: vscode.ExtensionContext) {
   const indicatorStyle = vscode.workspace.getConfiguration('indentRainbow')['indicatorStyle'] || 'classic';
   const highlightActiveScope = vscode.workspace.getConfiguration('indentRainbow')['highlightActiveScope'] || false;
   const lightIndicatorStyleLineWidth = vscode.workspace.getConfiguration('indentRainbow')['lightIndicatorStyleLineWidth'] || 1;
+  const lightIndicatorStyleLineWidthHighlight = vscode.workspace.getConfiguration('indentRainbow')['lightIndicatorStyleLineWidthHighlight'] || 2;
 
   // Colors will cycle through, and can be any size that you want
   const colors = vscode.workspace.getConfiguration('indentRainbow')['colors'] || [
@@ -74,7 +75,7 @@ export function activate(context: vscode.ExtensionContext) {
         activeScopeDecorationTypes[index] = vscode.window.createTextEditorDecorationType({
           borderStyle: "solid",
           borderColor: highlightColor,
-          borderWidth: `0 0 0 ${lightIndicatorStyleLineWidth * 3}px`
+          borderWidth: `0 0 0 ${lightIndicatorStyleLineWidthHighlight}px`
         });
       }
     }
