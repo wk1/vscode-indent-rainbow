@@ -6,8 +6,8 @@ import * as vscode from 'vscode';
 export function activate(context: vscode.ExtensionContext) {
 
   // Create a decorator types that we use to decorate indent levels
-  let decorationTypes: vscode.TextEditorDecorationType[] = [];
-  let activeScopeLightDecorationTypes: vscode.TextEditorDecorationType[] = [];
+  let decorationTypes = [];
+  let activeScopeDecorationTypes = [];
 
   let doIt = false;
   let clearMe = false;
@@ -31,9 +31,8 @@ export function activate(context: vscode.ExtensionContext) {
   const ignoreLinePatterns = vscode.workspace.getConfiguration('indentRainbow')['ignoreLinePatterns'] || [];
   const colorOnWhiteSpaceOnly = vscode.workspace.getConfiguration('indentRainbow')['colorOnWhiteSpaceOnly'] || false;
   const indicatorStyle = vscode.workspace.getConfiguration('indentRainbow')['indicatorStyle'] || 'classic';
+  const highlightActiveScope = vscode.workspace.getConfiguration('indentRainbow')['highlightActiveScope'] || false;
   const lightIndicatorStyleLineWidth = vscode.workspace.getConfiguration('indentRainbow')['lightIndicatorStyleLineWidth'] || 1;
-
-  let activeScopeLightDecorationOptions: vscode.DecorationOptions[] = [];
 
   // Colors will cycle through, and can be any size that you want
   const colors = vscode.workspace.getConfiguration('indentRainbow')['colors'] || [
@@ -45,25 +44,40 @@ export function activate(context: vscode.ExtensionContext) {
 
   // Loops through colors and creates decoration types for each one
   colors.forEach((color, index) => {
+
+    // create a 100% alpha version of the current color for the highlight
+    const highlightColor = color.replace(/[\d\.]+\)$/g, "1.0)");
+
     if (indicatorStyle === 'classic') {
       decorationTypes[index] = vscode.window.createTextEditorDecorationType({
         backgroundColor: color
       });
+      if (highlightActiveScope) {
+        activeScopeDecorationTypes[index] = vscode.window.createTextEditorDecorationType({
+          backgroundColor: highlightColor
+        });
+        // Alternative more subtle decoration for active scope
+        // activeScopeDecorationTypes[index] = vscode.window.createTextEditorDecorationType({
+        //   backgroundColor: color,
+        //   borderStyle: "solid",
+        //   borderColor: highlightColor,
+        //   borderWidth: `0 0 0 1px`
+        // });
+      }
     } else if (indicatorStyle === 'light') {
       decorationTypes[index] = vscode.window.createTextEditorDecorationType({
         borderStyle: "solid",
         borderColor: color,
         borderWidth: `0 0 0 ${lightIndicatorStyleLineWidth}px`
       });
+      if (highlightActiveScope) {
+        activeScopeDecorationTypes[index] = vscode.window.createTextEditorDecorationType({
+          borderStyle: "solid",
+          borderColor: highlightColor,
+          borderWidth: `0 0 0 ${lightIndicatorStyleLineWidth * 3}px`
+        });
+      }
     }
-
-    const updatedColor = color.replace(/[\d\.]+\)$/g, "1.0)");
-
-    activeScopeLightDecorationTypes[index] = vscode.window.createTextEditorDecorationType({
-      borderStyle: "solid",
-        borderColor: updatedColor,
-        borderWidth: `0 0 0 ${lightIndicatorStyleLineWidth * 3}px`
-      });
   });
 
   // loop through ignore regex strings and convert to valid RegEx's.
@@ -206,7 +220,7 @@ function getCurrentScope() {
       for (let decorationType of decorationTypes) {
         activeEditor.setDecorations(decorationType, decor);
       }
-      for (let decorationType of activeScopeLightDecorationTypes) {
+      for (let decorationType of activeScopeDecorationTypes) {
         activeEditor.setDecorations(decorationType, decor);
       }
       clearMe = false;
@@ -248,10 +262,10 @@ function getCurrentScope() {
     });
 
     let activeScopeDecoratorOptionsCurr = [];
-    activeScopeLightDecorationTypes.forEach(() => {
+    activeScopeDecorationTypes.forEach(() => {
       let decorator: vscode.DecorationOptions[] = [];
       activeScopeDecoratorOptionsCurr.push(decorator);
-    })
+    });
 
     var match;
     var ignore;
@@ -342,14 +356,13 @@ function getCurrentScope() {
             tabmix_decorator.push(decoration);
           } else {
             let decorator_index = o % decorators.length;
-            let activeScopeDecoratorOptionsCurrIndex = o % activeScopeLightDecorationTypes.length;
             if (lineInCurrentScope) {
               console.log("currentIndentation: " + currScope.indentation);
               console.log("n: " + n);
             }
-            if (n === currScope.indentation && lineInCurrentScope) { // ich denke das ist dann die innerste einrückung
-              activeScopeLightDecorationOptions.push(decoration);
-              activeScopeDecoratorOptionsCurr[activeScopeDecoratorOptionsCurrIndex].push(decoration);
+            // Add to highlight scope if the indentation matches the current scopes indentation and the line in in current scope
+            if (n === currScope.indentation && lineInCurrentScope && highlightActiveScope) {
+              activeScopeDecoratorOptionsCurr[decorator_index].push(decoration);
             } else {
               decorators[decorator_index].push(decoration);
             }
@@ -361,9 +374,11 @@ function getCurrentScope() {
     decorationTypes.forEach((decorationType, index) => {
       activeEditor.setDecorations(decorationType, decorators[index]);
     });
-    activeScopeLightDecorationTypes.forEach((decorationType, index) => {
-      activeEditor.setDecorations(decorationType, activeScopeDecoratorOptionsCurr[index]);
-    });
+    if (highlightActiveScope) {
+      activeScopeDecorationTypes.forEach((decorationType, index) => {
+        activeEditor.setDecorations(decorationType, activeScopeDecoratorOptionsCurr[index]);
+      });
+    }
     activeEditor.setDecorations(error_decoration_type, error_decorator);
     tabmix_decoration_type && activeEditor.setDecorations(tabmix_decoration_type, tabmix_decorator);
     clearMe = true; ////added to clear decorations when language switches away from the one we are interested in (see checkLanguage()) 
